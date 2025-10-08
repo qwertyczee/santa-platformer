@@ -1,6 +1,6 @@
 import pygame
 import random
-from constants import ASSETS_DIR, WIDTH, HEIGHT
+from constants import ASSETS_DIR, BASE_WIDTH, BASE_HEIGHT
 from enemy import Enemy
 
 # --- Level definitions ---
@@ -77,8 +77,8 @@ class LevelManager:
 
     def load_level(self, index):
         data = self.levels[index]
-        self.width = data.get('width', WIDTH)
-        self.height = data.get('height', HEIGHT)
+        self.width = data.get('width', BASE_WIDTH)
+        self.height = data.get('height', BASE_HEIGHT)
 
         # --- auto-generate ground at the bottom ---
         ground_height = 40

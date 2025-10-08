@@ -3,7 +3,8 @@ import sys
 from pathlib import Path
 
 # Import our modules
-from constants import WIDTH, HEIGHT, FPS, STARTING_LIVES, GRAVITY, MAX_FALL, LEVEL_COMPLETE_DELAY, ASSETS_DIR, POWERUP_DURATIONS
+from constants import BASE_WIDTH, BASE_HEIGHT, FPS, STARTING_LIVES, GRAVITY, MAX_FALL, LEVEL_COMPLETE_DELAY, ASSETS_DIR, POWERUP_DURATIONS
+from display import DisplayManager
 from player import Player
 from level import LevelManager, LEVELS
 from camera import Camera
@@ -14,11 +15,14 @@ from utils import get_texture
 pygame.init()
 
 # --- Game Initialization ---
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+display = DisplayManager()
 pygame.display.set_caption("Santa Platformer (Pygame)")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 28)
 big_font = pygame.font.SysFont(None, 48)
+
+# Create game surface for rendering at base resolution
+game_surface = display.create_game_surface()
 
 # --- Game Objects ---
 level_manager = LevelManager(LEVELS)
@@ -38,6 +42,10 @@ while running:
     for ev in pygame.event.get():
         if ev.type == pygame.QUIT:
             running = False
+        elif ev.type == pygame.VIDEORESIZE:
+            # Handle window resize
+            display.resize_window(ev.w, ev.h)
+            game_surface = display.create_game_surface()
         elif ev.type == pygame.KEYDOWN:
             if ev.key == pygame.K_ESCAPE:
                 running = False
@@ -139,11 +147,11 @@ while running:
 
     # --- Drawing ---
     if level_manager.background:
-        screen.blit(level_manager.background, (-camera.x, -camera.y))
+        game_surface.blit(level_manager.background, (-camera.x, -camera.y))
     else:
-        screen.fill((24, 36, 60))  # fallback
+        game_surface.fill((24, 36, 60))  # fallback
     
-    screen.blit(level_manager.overlay, (-camera.x, -camera.y))
+    game_surface.blit(level_manager.overlay, (-camera.x, -camera.y))
 
     # draw ground (tiled horizontally)
     tile = pygame.image.load("assets/ground.png").convert_alpha()
@@ -151,46 +159,46 @@ while running:
     tile_height = tile.get_height()
 
     for x in range(0, level_manager.ground.width, tile_width):
-        screen.blit(tile, (level_manager.ground.x + x - camera.x,
+        game_surface.blit(tile, (level_manager.ground.x + x - camera.x,
                         level_manager.ground.y - camera.y))
         
     # draw floating platforms
     for plat in level_manager.platforms:
         surf = get_texture('platform', (plat.width, plat.height))
-        screen.blit(surf, (plat.x - camera.x, plat.y - camera.y))
+        game_surface.blit(surf, (plat.x - camera.x, plat.y - camera.y))
 
     # draw presents
     for p in level_manager.presents:
         surf = get_texture(p["texture"], (p["rect"].width, p["rect"].height))
-        screen.blit(surf, (p["rect"].x - camera.x, p["rect"].y - camera.y))
+        game_surface.blit(surf, (p["rect"].x - camera.x, p["rect"].y - camera.y))
 
     # draw powerups
     for pu in level_manager.powerups:
         surf = get_texture(pu['type'], (pu['rect'].width, pu['rect'].height))
-        screen.blit(surf, (pu['rect'].x - camera.x, pu['rect'].y - camera.y))
+        game_surface.blit(surf, (pu['rect'].x - camera.x, pu['rect'].y - camera.y))
 
     # draw enemies
     for e in level_manager.enemies:
         surf = get_texture('enemy', (e.rect.width, e.rect.height))
-        screen.blit(surf, (e.rect.x - camera.x, e.rect.y - camera.y))
+        game_surface.blit(surf, (e.rect.x - camera.x, e.rect.y - camera.y))
 
     # draw goal (tree)
     tree_texture_name = 'tree1' if level_manager.completed else 'tree'
     surf_tree = get_texture(tree_texture_name, (level_manager.goal.width, level_manager.goal.height))
-    screen.blit(surf_tree, (level_manager.goal.x - camera.x, level_manager.goal.y - camera.y))
+    game_surface.blit(surf_tree, (level_manager.goal.x - camera.x, level_manager.goal.y - camera.y))
     
     player.update_animation(dt_ms)  # dt_ms from clock.tick()
     surf_player = player.get_current_frame()
 
     # invincibility flicker
     if not (player.is_invincible(now) and (now // 150) % 2 == 0):
-        screen.blit(surf_player, (player.rect.x - camera.x, player.rect.y - camera.y))
+        game_surface.blit(surf_player, (player.rect.x - camera.x, player.rect.y - camera.y))
 
     # HUD
-    draw_hud(screen, font, lives, score, level_manager, player)
+    draw_hud(game_surface, font, lives, score, level_manager, player)
     
     # message text
-    draw_message(screen, font)
+    draw_message(game_surface, font)
 
     # --- Handle delayed level switch ---
     if level_manager.completed and level_complete_time is not None:
@@ -203,9 +211,10 @@ while running:
                 level_complete_time = None
             else:
                 # final victory
-                screen.fill((10,10,40))
+                game_surface.fill((10,10,40))
                 text = big_font.render("You saved Christmas! 🎅🎉", True, (255,255,200))
-                screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
+                game_surface.blit(text, (BASE_WIDTH//2 - text.get_width()//2, BASE_HEIGHT//2 - text.get_height()//2))
+                display.render_game_surface(game_surface)
                 pygame.display.flip()
                 pygame.time.delay(3000)
                 # restart game
@@ -215,6 +224,8 @@ while running:
                 score = 0
                 level_complete_time = None
     
+    # Render game surface to screen with scaling
+    display.render_game_surface(game_surface)
     pygame.display.flip()
 
 pygame.quit()

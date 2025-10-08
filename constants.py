@@ -2,8 +2,10 @@ import pygame
 from pathlib import Path
 
 # --- Screen and Game Settings ---
-WIDTH, HEIGHT = 800, 600
+BASE_WIDTH, BASE_HEIGHT = 800, 600  # Base resolution for scaling
 FPS = 60
+FULLSCREEN = True  # Start in fullscreen mode (borderless windowed fullscreen)
+RESIZABLE = True  # Allow window resizing
 
 # --- Physics Constants ---
 GRAVITY = 0.6          # px/frame^2

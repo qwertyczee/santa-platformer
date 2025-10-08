@@ -1,5 +1,5 @@
 import pygame
-from constants import WIDTH, MESSAGE_DURATION
+from constants import BASE_WIDTH, MESSAGE_DURATION
 
 # Message display variables
 message = ""
@@ -23,7 +23,7 @@ def draw_hud(screen, font, lives, score, level_manager, player):
 
     # active powerups + timers
     now = pygame.time.get_ticks()
-    x = WIDTH - 10
+    x = BASE_WIDTH - 10
     y = 8
     for ptype in ['double_jump','speed_boost','invincibility']:
         end = player.power_until[ptype]
@@ -41,4 +41,4 @@ def draw_message(screen, font):
     now = pygame.time.get_ticks()
     if message and now < message_until:
         m_surf = font.render(message, True, (255, 255, 255))
-        screen.blit(m_surf, (WIDTH//2 - m_surf.get_width()//2, 8))
+        screen.blit(m_surf, (BASE_WIDTH//2 - m_surf.get_width()//2, 8))
