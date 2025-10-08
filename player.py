@@ -1,5 +1,5 @@
 import pygame
-from constants import BASE_SPEED, BASE_JUMP, ANIMATION_SPEED, RESPAWN_INVINCIBLE_TIME
+from constants import BASE_SPEED, BASE_JUMP, ANIMATION_SPEED, RESPAWN_INVINCIBLE_TIME, COYOTE_TIME
 from utils import get_texture
 
 class Player:
@@ -16,6 +16,10 @@ class Player:
         self.max_jumps = 1
         self.jumps_remaining = self.max_jumps
         self.facing_right = True
+        
+        # Coyote time - allows jumping shortly after leaving a platform
+        self.last_ground_time = 0
+        self.on_ground = False
 
         # powerups timers
         self.power_until = {'speed_boost':0,'double_jump':0,'invincibility':0}
@@ -85,3 +89,21 @@ class Player:
         self.vy = 0
         # give a short invincible window after respawn
         self.hit_invincible_until = pygame.time.get_ticks() + RESPAWN_INVINCIBLE_TIME
+        # Reset coyote time on respawn
+        self.last_ground_time = 0
+        self.on_ground = False
+        
+    def can_jump(self, current_time):
+        """Check if player can jump, considering coyote time"""
+        # Can jump if we have jumps remaining AND either:
+        # 1. Currently on ground, OR
+        # 2. Within coyote time window after leaving ground
+        if self.jumps_remaining <= 0:
+            return False
+            
+        if self.on_ground:
+            return True
+            
+        # Check if we're within coyote time window
+        time_since_ground = current_time - self.last_ground_time
+        return time_since_ground <= COYOTE_TIME

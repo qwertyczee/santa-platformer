@@ -1,3 +1,5 @@
+import pygame
+
 def resolve_horizontal(player, platforms):
     """Resolve horizontal collisions between player and platforms."""
     player.rect.x = int(player.x)
@@ -23,11 +25,19 @@ def resolve_vertical(player, platforms):
                 on_ground = True
                 # refill jumps when landing
                 player.jumps_remaining = player.max_jumps
+                # Update coyote time tracking
+                player.on_ground = True
+                player.last_ground_time = pygame.time.get_ticks()
             elif player.vy < 0:
                 # hit bottom of platform
                 player.rect.top = plat.bottom
                 player.vy = 0
                 player.y = player.rect.y
+    
+    # If not on ground after checking all platforms, update on_ground status
+    if not on_ground:
+        player.on_ground = False
+        
     return on_ground
 
 def clamp_player_to_level(player, level_width, level_height):
@@ -49,6 +59,9 @@ def clamp_player_to_level(player, level_width, level_height):
         player.y = player.rect.y
         player.vy = 0
         player.jumps_remaining = player.max_jumps
+        # Update coyote time tracking when landing on level bottom
+        player.on_ground = True
+        player.last_ground_time = pygame.time.get_ticks()
 
     # keep player rect synchronized
     player.rect.x = int(player.x)

@@ -151,7 +151,7 @@ while running:
             state = GameState.PAUSED
 
         elif ev.type == pygame.KEYDOWN and ev.key == settings.get_key("jump"):
-            if player and player.jumps_remaining > 0:
+            if player and player.can_jump(now):
                 player.vy = player.jump_strength
                 player.jumps_remaining -= 1
 

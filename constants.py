@@ -12,6 +12,7 @@ GRAVITY = 0.6          # px/frame^2
 MAX_FALL = 15          # terminal velocity
 BASE_SPEED = 5         # px/frame
 BASE_JUMP = -13        # px/frame
+COYOTE_TIME = 50      # ms - time allowed to jump after leaving a platform
 
 # --- Game Settings ---
 STARTING_LIVES = 3
