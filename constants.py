@@ -27,6 +27,9 @@ class GameState:
     OPTIONS     = "OPTIONS"
     PLAYING     = "PLAYING"
     PAUSED      = "PAUSED"
+    STORY_INTRO = "STORY_INTRO"
+    STORY_INTERLUDE = "STORY_INTERLUDE"
+    STORY_OUTRO = "STORY_OUTRO"
 
 # --- Power-up Durations (in milliseconds) ---
 POWERUP_DURATIONS = {

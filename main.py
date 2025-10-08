@@ -1,92 +1,255 @@
-# main.py (FULL)
-import pygame
 import sys
-from pathlib import Path
+from typing import Optional
 
-from constants import BASE_WIDTH, BASE_HEIGHT, FPS, STARTING_LIVES, GRAVITY, MAX_FALL, LEVEL_COMPLETE_DELAY, ASSETS_DIR, POWERUP_DURATIONS, GameState
+import pygame
+
+from constants import (
+    ASSETS_DIR,
+    BASE_HEIGHT,
+    BASE_WIDTH,
+    FPS,
+    GRAVITY,
+    LEVEL_COMPLETE_DELAY,
+    MAX_FALL,
+    POWERUP_DURATIONS,
+    GameState,
+)
 from display import DisplayManager
 from player import Player
-from level import LevelManager, LEVELS
+from level import LevelManager, load_campaign_data
 from camera import Camera
-from collision import resolve_horizontal, resolve_vertical, clamp_player_to_level
-from ui import draw_hud, draw_message, show_message
+from collision import clamp_player_to_level, resolve_horizontal, resolve_vertical
+from ui import StoryTextbox, draw_hud, draw_message, show_message
 from utils import get_texture
 from settings import Settings
-from menu import MainMenu, PauseMenu, LevelSelect, OptionsMenu
+from menu import LevelSelect, MainMenu, OptionsMenu, PauseMenu
+
 
 pygame.init()
 
-# --- Game Initialization ---
+# ---------------------------------------------------------------------------
+# Core systems
+# ---------------------------------------------------------------------------
 display = DisplayManager()
-pygame.display.set_caption("Santa Platformer (Pygame)")
+pygame.display.set_caption("Santa Platformer (Story Edition)")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 28)
 big_font = pygame.font.SysFont(None, 48)
 
-game_surface = display.create_game_surface()
+story_box = StoryTextbox(font, big_font)
 
-# Settings
+ground_tile = pygame.image.load(str(ASSETS_DIR / "ground.png")).convert_alpha()
+ground_tile_width = ground_tile.get_width()
+
+game_surface = display.create_game_surface()
 settings = Settings.load()
 
-# --- Game State & Screens ---
+# Load campaign data once and reuse for every level
+campaign_data = load_campaign_data()
+level_names = [lvl.get("name", f"Level {idx + 1}") for idx, lvl in enumerate(campaign_data.get("levels", []))]
+if not level_names:
+    level_names = ["Story Level"]
+
+# ---------------------------------------------------------------------------
+# Global state
+# ---------------------------------------------------------------------------
 state = GameState.MAIN_MENU
-previous_state = GameState.MAIN_MENU  # Track where we came from for Options back button
+previous_state = GameState.MAIN_MENU
+
 main_menu = MainMenu(big_font, font)
 pause_menu = PauseMenu(big_font, font)
-level_select = LevelSelect(big_font, font, [lvl["name"] for lvl in LEVELS])
+level_select = LevelSelect(big_font, font, level_names)
 options_menu = OptionsMenu(big_font, font, settings)
 
-# --- Game Objects (lazy init for levels) ---
-def start_new_game(level_index=0):
-    global level_manager, player, camera, lives, score, level_complete_time
-    level_manager = LevelManager(LEVELS, settings)
-    level_manager.index = level_index
-    level_manager.load_level(level_index)
-
-    player = Player(*level_manager.player_start)
-    camera = Camera()
-    # apply difficulty lives
-    global STARTING_LIVES  # we keep original constant but use settings.lives
-    lives = settings.lives
-    score = 0
-    level_complete_time = None
-
-level_manager = None
-player = None
-camera = None
+level_manager: Optional[LevelManager] = None
+player: Optional[Player] = None
+camera: Optional[Camera] = None
 lives = 0
 score = 0
-level_complete_time = None
+level_complete_time: Optional[int] = None
 
-# mouse visible in menus
+story_next_state = GameState.PLAYING
+story_post_action = None
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+def spawn_player(reset_score: bool = True) -> None:
+    global player, camera, score
+    player = Player(*level_manager.player_start)
+    camera = Camera()
+    if reset_score:
+        score = 0
+
+
+def start_new_game(level_index: int = 0) -> None:
+    global level_manager, lives, level_complete_time
+    level_manager = LevelManager(campaign_data, settings=settings, index=level_index)
+    spawn_player(reset_score=True)
+    lives = settings.lives
+    level_complete_time = None
+
+
+def begin_story(sequence, story_state, next_state=GameState.PLAYING, post_action=None):
+    global state, story_next_state, story_post_action
+    if sequence:
+        story_box.start(sequence)
+        story_next_state = next_state
+        story_post_action = post_action
+        state = story_state
+        pygame.mouse.set_visible(True)
+    else:
+        if callable(post_action):
+            post_action()
+        else:
+            state = next_state
+            if state == GameState.PLAYING:
+                pygame.mouse.set_visible(False)
+
+
+def finish_story():
+    global state, story_post_action
+    story_box.reset()
+    post_action = story_post_action
+    story_post_action = None
+    if callable(post_action):
+        post_action()
+    else:
+        state = story_next_state
+        if state == GameState.PLAYING:
+            pygame.mouse.set_visible(False)
+
+
+def advance_to_next_level():
+    global level_complete_time, state
+    if level_manager and level_manager.next_level():
+        spawn_player(reset_score=True)
+        level_manager.completed = False
+        level_complete_time = None
+        intro = level_manager.story_intro
+        if intro:
+            begin_story(intro, GameState.STORY_INTRO, GameState.PLAYING)
+        else:
+            state = GameState.PLAYING
+            pygame.mouse.set_visible(False)
+    else:
+        game_surface.fill((10, 10, 40))
+        text = big_font.render("You saved Christmas! 🎅🎉", True, (255, 255, 200))
+        game_surface.blit(text, (BASE_WIDTH // 2 - text.get_width() // 2, BASE_HEIGHT // 2 - text.get_height() // 2))
+        display.render_game_surface(game_surface)
+        pygame.display.flip()
+        pygame.time.delay(2200)
+        pygame.mouse.set_visible(True)
+        state = GameState.MAIN_MENU
+
+
+def handle_checkpoint(checkpoint: dict) -> bool:
+    sequence = level_manager.activate_checkpoint(checkpoint["id"])
+    show_message("Checkpoint reached!", 1000)
+    story_started = False
+    if sequence:
+        begin_story(sequence, GameState.STORY_INTERLUDE, GameState.PLAYING)
+        story_started = True
+    if dispatch_events("checkpoint_reached", checkpoint["id"]):
+        story_started = True
+    return story_started
+
+
+def dispatch_events(trigger_type: str, value) -> bool:
+    triggered_story = False
+    triggered = level_manager.handle_progress_event(trigger_type, value)
+    for event in triggered:
+        level_manager.apply_event_effect(event)
+        sequence_id = event.get("story")
+        if sequence_id and not triggered_story:
+            begin_story(level_manager.get_story_sequence(sequence_id), GameState.STORY_INTERLUDE, GameState.PLAYING)
+            triggered_story = True
+    return triggered_story
+
+
+def draw_world(include_hud: bool = True) -> None:
+    if not level_manager or not player:
+        game_surface.fill((24, 36, 60))
+        return
+
+    if level_manager.background:
+        game_surface.blit(level_manager.background, (-camera.x, -camera.y))
+    else:
+        game_surface.fill((24, 36, 60))
+
+    if level_manager.overlay:
+        game_surface.blit(level_manager.overlay, (-camera.x, -camera.y))
+
+    ground = level_manager.ground
+    for x in range(0, max(ground.width, BASE_WIDTH), ground_tile_width):
+        game_surface.blit(
+            ground_tile,
+            (ground.x + x - camera.x, ground.y - camera.y),
+        )
+
+    for plat in level_manager.platforms:
+        surf = get_texture("platform", (plat.width, plat.height))
+        game_surface.blit(surf, (plat.x - camera.x, plat.y - camera.y))
+
+    for present in level_manager.presents:
+        rect = present["rect"]
+        surf = get_texture(present["texture"], (rect.width, rect.height))
+        game_surface.blit(surf, (rect.x - camera.x, rect.y - camera.y))
+
+    for power in level_manager.powerups:
+        rect = power["rect"]
+        surf = get_texture(power["type"], (rect.width, rect.height))
+        game_surface.blit(surf, (rect.x - camera.x, rect.y - camera.y))
+
+    for enemy in level_manager.enemies:
+        surf = get_texture("enemy", (enemy.rect.width, enemy.rect.height))
+        game_surface.blit(surf, (enemy.rect.x - camera.x, enemy.rect.y - camera.y))
+
+    tree_texture = "tree1" if level_manager.completed else "tree"
+    tree_surf = get_texture(tree_texture, (level_manager.goal.width, level_manager.goal.height))
+    game_surface.blit(tree_surf, (level_manager.goal.x - camera.x, level_manager.goal.y - camera.y))
+
+    player.update_animation(clock.get_time())
+    if not (player.is_invincible(pygame.time.get_ticks()) and (pygame.time.get_ticks() // 150) % 2 == 0):
+        frame = player.get_current_frame()
+        game_surface.blit(frame, (player.rect.x - camera.x, player.rect.y - camera.y))
+
+    if include_hud:
+        draw_hud(game_surface, font, lives, score, level_manager, player)
+        draw_message(game_surface, font)
+
+
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
 pygame.mouse.set_visible(True)
-
 running = True
 while running:
     dt_ms = clock.tick(FPS)
     now = pygame.time.get_ticks()
     events = list(pygame.event.get())
 
-    # Global window/system events
-    for ev in events:
-        if ev.type == pygame.QUIT:
+    for event in events:
+        if event.type == pygame.QUIT:
             running = False
-        elif ev.type == pygame.VIDEORESIZE:
-            display.resize_window(ev.w, ev.h)
+        elif event.type == pygame.VIDEORESIZE:
+            display.resize_window(event.w, event.h)
             game_surface = display.create_game_surface()
 
-    # --- STATE MACHINE ---
     if state == GameState.MAIN_MENU:
         pygame.mouse.set_visible(True)
         action = main_menu.render(game_surface, events, display.to_base_pos)
-        # clear & draw
         display.render_game_surface(game_surface)
         pygame.display.flip()
 
         if action == "Start":
             start_new_game(0)
-            state = GameState.PLAYING
-            pygame.mouse.set_visible(False)
+            if level_manager.story_intro:
+                begin_story(level_manager.story_intro, GameState.STORY_INTRO, GameState.PLAYING)
+            else:
+                state = GameState.PLAYING
+                pygame.mouse.set_visible(False)
         elif action == "Level Selector":
             state = GameState.LEVEL_SELECT
         elif action == "Options":
@@ -98,70 +261,81 @@ while running:
 
     if state == GameState.LEVEL_SELECT:
         pygame.mouse.set_visible(True)
-        act = level_select.render(game_surface, events, display.to_base_pos)
+        selection = level_select.render(game_surface, events, display.to_base_pos)
         display.render_game_surface(game_surface)
         pygame.display.flip()
-        if act == "Back":
+
+        if selection == "Back":
             state = GameState.MAIN_MENU
-        elif isinstance(act, str) and act.startswith("START_LEVEL_"):
-            idx = int(act.split("_")[-1])
+        elif isinstance(selection, str) and selection.startswith("START_LEVEL_"):
+            idx = int(selection.split("_")[-1])
             start_new_game(idx)
-            state = GameState.PLAYING
-            pygame.mouse.set_visible(False)
+            if level_manager.story_intro:
+                begin_story(level_manager.story_intro, GameState.STORY_INTRO, GameState.PLAYING)
+            else:
+                state = GameState.PLAYING
+                pygame.mouse.set_visible(False)
         continue
 
     if state == GameState.OPTIONS:
         pygame.mouse.set_visible(True)
-        act = options_menu.render(game_surface, events, display.to_base_pos)
+        action = options_menu.render(game_surface, events, display.to_base_pos)
         display.render_game_surface(game_surface)
         pygame.display.flip()
-        if act == "Back":
-            # Return to the previous menu
+        if action == "Back":
             state = previous_state
-            # Rebuild LevelSelect if coming from there (names unchanged; but keep separation)
             if previous_state == GameState.LEVEL_SELECT:
-                level_select = LevelSelect(big_font, font, [lvl["name"] for lvl in LEVELS])
-            # If we change difficulty, re-apply powerup multipliers at runtime
-            continue
+                level_select = LevelSelect(big_font, font, level_names)
         continue
 
     if state == GameState.PAUSED:
         pygame.mouse.set_visible(True)
-        act = pause_menu.render(game_surface, events, display.to_base_pos)
+        action = pause_menu.render(game_surface, events, display.to_base_pos)
         display.render_game_surface(game_surface)
         pygame.display.flip()
-        # pause controls
-        for ev in events:
-            if ev.type == pygame.KEYDOWN and ev.key == settings.get_key("pause"):
+
+        for event in events:
+            if event.type == pygame.KEYDOWN and event.key == settings.get_key("pause"):
                 state = GameState.PLAYING
                 pygame.mouse.set_visible(False)
-        if act == "Resume":
+
+        if action == "Resume":
             state = GameState.PLAYING
             pygame.mouse.set_visible(False)
-        elif act == "Options":
+        elif action == "Options":
             previous_state = GameState.PAUSED
             state = GameState.OPTIONS
-        elif act == "Quit to Menu":
+        elif action == "Quit to Menu":
             state = GameState.MAIN_MENU
         continue
 
-    # --- PLAYING ---
-    pygame.mouse.set_visible(False)
+    if state in (GameState.STORY_INTRO, GameState.STORY_INTERLUDE, GameState.STORY_OUTRO):
+        pygame.mouse.set_visible(True)
+        story_box.update(dt_ms)
+        for event in events:
+            story_box.handle_event(event)
+        draw_world(include_hud=False)
+        story_box.draw(game_surface)
+        display.render_game_surface(game_surface)
+        pygame.display.flip()
+        if story_box.finished:
+            finish_story()
+        continue
 
-    # Input mapping
+    # ------------------------------------------------------------------
+    # PLAYING
+    # ------------------------------------------------------------------
+    pygame.mouse.set_visible(False)
     keys = pygame.key.get_pressed()
 
-    # Handle pause
-    for ev in events:
-        if ev.type == pygame.KEYDOWN and ev.key == settings.get_key("pause"):
-            state = GameState.PAUSED
-
-        elif ev.type == pygame.KEYDOWN and ev.key == settings.get_key("jump"):
-            if player and player.can_jump(now):
+    for event in events:
+        if event.type == pygame.KEYDOWN:
+            if event.key == settings.get_key("pause"):
+                state = GameState.PAUSED
+            elif event.key == settings.get_key("jump") and player and player.can_jump(now):
                 player.vy = player.jump_strength
                 player.jumps_remaining -= 1
 
-    # Movement
     player.vx = 0
     if keys[settings.get_key("left")]:
         player.vx = -player.speed
@@ -170,15 +344,12 @@ while running:
         player.vx = player.speed
         player.facing_right = True
 
-    # Powerups durations apply multiplier by difficulty
     def scaled_duration(ptype: str) -> int:
         base = POWERUP_DURATIONS[ptype]
         return int(base * settings.powerup_mult)
-    
-    # Update powerup states
+
     player.update_powerups(now)
 
-    # Physics
     player.vy += GRAVITY
     if player.vy > MAX_FALL:
         player.vy = MAX_FALL
@@ -186,122 +357,74 @@ while running:
     player.x += player.vx
     resolve_horizontal(player, [level_manager.ground] + level_manager.platforms)
     player.y += player.vy
-    on_ground = resolve_vertical(player, [level_manager.ground] + level_manager.platforms)
+    resolve_vertical(player, [level_manager.ground] + level_manager.platforms)
     clamp_player_to_level(player, level_manager.width, level_manager.height)
 
-    # Camera & enemies
-    camera.update(player.rect, level_manager.width, level_manager.height)
-    for e in level_manager.enemies:
-        e.update()
+    checkpoint = level_manager.checkpoint_collisions(player.rect)
+    if checkpoint and handle_checkpoint(checkpoint):
+        continue
 
-    # Presents
-    for p in level_manager.presents[:]:
-        if player.rect.colliderect(p["rect"]):
-            level_manager.presents.remove(p)
+    camera.update(player.rect, level_manager.width, level_manager.height)
+    for enemy in level_manager.enemies:
+        enemy.update()
+
+    story_triggered = False
+    for present in level_manager.presents[:]:
+        if player.rect.colliderect(present["rect"]):
+            level_manager.presents.remove(present)
             score += 1
             show_message("Present collected!", 900)
+            if dispatch_events("presents_collected", score):
+                story_triggered = True
+                break
 
-    # Powerups
-    for pu in level_manager.powerups[:]:
-        if player.rect.colliderect(pu['rect']):
-            ptype = pu['type']
+    if story_triggered or state != GameState.PLAYING:
+        continue
+
+    for power in level_manager.powerups[:]:
+        if player.rect.colliderect(power["rect"]):
+            ptype = power["type"]
             player.apply_powerup(ptype, scaled_duration(ptype), now)
-            level_manager.powerups.remove(pu)
+            level_manager.powerups.remove(power)
             show_message(f"Powerup: {ptype}", 1100)
 
-    # Enemies collide
     collided_enemy = None
-    for e in level_manager.enemies:
-        if player.rect.colliderect(e.rect):
-            collided_enemy = e
+    for enemy in level_manager.enemies:
+        if player.rect.colliderect(enemy.rect):
+            collided_enemy = enemy
             break
 
-    if collided_enemy:
-        if not player.is_invincible(now):
-            lives -= 1
-            if lives <= 0:
-                show_message("Game Over! Returning to Menu...", 1800)
-                pygame.time.delay(1200)
-                state = GameState.MAIN_MENU
-                continue
-            else:
-                player.respawn(*level_manager.player_start)
-                show_message("You lost a life!", 900)
+    if collided_enemy and not player.is_invincible(now):
+        lives -= 1
+        if lives <= 0:
+            show_message("Game Over! Returning to Menu...", 1800)
+            pygame.time.delay(1200)
+            state = GameState.MAIN_MENU
+            pygame.mouse.set_visible(True)
+            continue
+        player.respawn(*level_manager.player_start)
+        show_message("You lost a life!", 900)
 
-    # Goal
     if player.rect.colliderect(level_manager.goal):
         if score >= level_manager.total_presents:
             if not level_manager.completed:
                 level_manager.completed = True
-                level_complete_time = pygame.time.get_ticks()
+                level_complete_time = now
                 show_message("Level Complete!", 1500)
         else:
             show_message("Collect all presents before the tree!", 1300)
 
-    # Drawing
-    if level_manager.background:
-        game_surface.blit(level_manager.background, (-camera.x, -camera.y))
-    else:
-        game_surface.fill((24, 36, 60))
-
-    game_surface.blit(level_manager.overlay, (-camera.x, -camera.y))
-
-    tile = pygame.image.load("assets/ground.png").convert_alpha()
-    tile_width = tile.get_width()
-
-    for x in range(0, level_manager.ground.width, tile_width):
-        game_surface.blit(tile, (level_manager.ground.x + x - camera.x,
-                        level_manager.ground.y - camera.y))
-
-    for plat in level_manager.platforms:
-        surf = get_texture('platform', (plat.width, plat.height))
-        game_surface.blit(surf, (plat.x - camera.x, plat.y - camera.y))
-
-    for p in level_manager.presents:
-        surf = get_texture(p["texture"], (p["rect"].width, p["rect"].height))
-        game_surface.blit(surf, (p["rect"].x - camera.x, p["rect"].y - camera.y))
-
-    for pu in level_manager.powerups:
-        surf = get_texture(pu['type'], (pu['rect'].width, pu['rect'].height))
-        game_surface.blit(surf, (pu['rect'].x - camera.x, pu['rect'].y - camera.y))
-
-    for e in level_manager.enemies:
-        surf = get_texture('enemy', (e.rect.width, e.rect.height))
-        game_surface.blit(surf, (e.rect.x - camera.x, e.rect.y - camera.y))
-
-    tree_texture_name = 'tree1' if level_manager.completed else 'tree'
-    surf_tree = get_texture(tree_texture_name, (level_manager.goal.width, level_manager.goal.height))
-    game_surface.blit(surf_tree, (level_manager.goal.x - camera.x, level_manager.goal.y - camera.y))
-
-    player.update_animation(dt_ms)
-    surf_player = player.get_current_frame()
-    if not (player.is_invincible(now) and (now // 150) % 2 == 0):
-        game_surface.blit(surf_player, (player.rect.x - camera.x, player.rect.y - camera.y))
-
-    draw_hud(game_surface, font, lives, score, level_manager, player)
-    draw_message(game_surface, font)
-
-    # Delayed level switch
-    if level_manager.completed and level_complete_time is not None:
-        if pygame.time.get_ticks() - level_complete_time > LEVEL_COMPLETE_DELAY:
-            advanced = level_manager.next_level()
-            if advanced:
-                # re-apply difficulty enemy scaling on new level already handled in load_level
-                player = Player(*level_manager.player_start)
-                score = 0
-                level_manager.completed = False
-                level_complete_time = None
-            else:
-                game_surface.fill((10,10,40))
-                text = big_font.render("You saved Christmas! 🎅🎉", True, (255,255,200))
-                game_surface.blit(text, (BASE_WIDTH//2 - text.get_width()//2, BASE_HEIGHT//2 - text.get_height()//2))
-                display.render_game_surface(game_surface)
-                pygame.display.flip()
-                pygame.time.delay(2000)
-                state = GameState.MAIN_MENU
-
+    draw_world(include_hud=True)
     display.render_game_surface(game_surface)
     pygame.display.flip()
+
+    if level_manager.completed and level_complete_time is not None:
+        if now - level_complete_time > LEVEL_COMPLETE_DELAY:
+            if level_manager.story_outro and not level_manager.outro_played:
+                level_manager.outro_played = True
+                begin_story(level_manager.story_outro, GameState.STORY_OUTRO, GameState.MAIN_MENU, post_action=advance_to_next_level)
+            else:
+                advance_to_next_level()
 
 pygame.quit()
 sys.exit()
