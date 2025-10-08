@@ -97,13 +97,22 @@ class Player:
         """Check if player can jump, considering coyote time"""
         # Can jump if we have jumps remaining AND either:
         # 1. Currently on ground, OR
-        # 2. Within coyote time window after leaving ground
+        # 2. Within coyote time window after leaving ground, OR
+        # 3. Have double jump ability (max_jumps > 1) and this is not the first jump
         if self.jumps_remaining <= 0:
             return False
             
         if self.on_ground:
             return True
             
-        # Check if we're within coyote time window
+        # Check if we're within coyote time window (only for first jump)
         time_since_ground = current_time - self.last_ground_time
-        return time_since_ground <= COYOTE_TIME
+        if time_since_ground <= COYOTE_TIME:
+            return True
+
+        # If we have double jump (max_jumps > 1), allow jumping even in air
+        # but only if we haven't used all jumps yet
+        if self.max_jumps > 1:
+            return True
+
+        return False

@@ -174,6 +174,9 @@ while running:
     def scaled_duration(ptype: str) -> int:
         base = POWERUP_DURATIONS[ptype]
         return int(base * settings.powerup_mult)
+    
+    # Update powerup states
+    player.update_powerups(now)
 
     # Physics
     player.vy += GRAVITY
