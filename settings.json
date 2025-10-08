@@ -1,0 +1,9 @@
+{
+  "difficulty": "Normal",
+  "controls": {
+    "left": "A",
+    "right": "D",
+    "jump": "SPACE",
+    "pause": "ESCAPE"
+  }
+}

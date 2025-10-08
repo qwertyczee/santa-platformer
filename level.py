@@ -2,6 +2,8 @@ import pygame
 import random
 from constants import ASSETS_DIR, BASE_WIDTH, BASE_HEIGHT
 from enemy import Enemy
+from settings import Settings
+from typing import List
 
 # --- Level definitions ---
 LEVELS = [
@@ -69,31 +71,74 @@ LEVELS = [
 ]
 
 class LevelManager:
-    def __init__(self, levels_data):
+    """
+    Manages loading levels.
+    New constructor signature:
+      LevelManager(levels_data, settings: Settings = None, index: int = 0)
+    """
+    def __init__(self, levels_data: List[dict], settings: Settings = None, index: int = 0):
         self.completed = False
         self.levels = levels_data
-        self.index = 0
+        self.index = index
+        # Accept settings (if None, load defaults) so code calling LevelManager can pass Settings object.
+        self.settings = settings if settings is not None else Settings.load()
+        # model state fields
+        self.width = BASE_WIDTH
+        self.height = BASE_HEIGHT
+        self.ground = pygame.Rect(0, 0, self.width, 40)
+        self.platforms = []
+        self.presents = []
+        self.powerups = []
+        self.enemies = []
+        self.goal = pygame.Rect(0, 0, 0, 0)
+        self.player_start = (0, 0)
+        self.total_presents = 0
+        self.name = ""
+        self.background = None
+        self.overlay = None
+
+        # load initial level
         self.load_level(self.index)
 
-    def load_level(self, index):
+    def load_level(self, index: int):
+        """Load level by index and initialize geometry, enemies, powerups, background, etc."""
         data = self.levels[index]
+        self.index = index
         self.width = data.get('width', BASE_WIDTH)
         self.height = data.get('height', BASE_HEIGHT)
 
-        # --- auto-generate ground at the bottom ---
+        # ground at bottom
         ground_height = 40
         self.ground = pygame.Rect(0, self.height - ground_height, self.width, ground_height)
 
-        # --- floating platforms ---
+        # floating platforms
         self.platforms = [pygame.Rect(*p) for p in data['platforms']]
 
+        # presents (with textures)
         self.presents = []
         for p in data['presents']:
             rect = pygame.Rect(*p)
             texture = random.choice(["present", "present1", "present2", "present3"])
             self.presents.append({"rect": rect, "texture": texture})
+
+        # powerups
         self.powerups = [{'rect': pygame.Rect(*p['rect']), 'type': p['type']} for p in data.get('powerups', [])]
+
+        # enemies
         self.enemies = [Enemy(*e) for e in data.get('enemies', [])]
+
+        # apply difficulty scaling to enemy speed if settings available
+        try:
+            mult = getattr(self.settings, "enemy_speed_mult", 1.0)
+        except Exception:
+            mult = 1.0
+        if mult != 1.0:
+            for ent in self.enemies:
+                ent.speed *= mult
+                # keep direction consistent with sign of vx
+                ent.vx = ent.speed if ent.vx >= 0 else -ent.speed
+
+        # player start and goal
         sx, sy = data['player_start']
         gx, gy, gw, gh = data['goal']
         self.goal = pygame.Rect(gx, gy, gw, gh)
@@ -101,7 +146,7 @@ class LevelManager:
         self.total_presents = len(self.presents)
         self.name = data.get('name', f"Level {index+1}")
 
-        # --- Load background ---
+        # background load (bckg{index+1}.png)
         bg_path = ASSETS_DIR / f"bckg{index+1}.png"
         if bg_path.exists():
             bg_img = pygame.image.load(str(bg_path)).convert()
@@ -109,11 +154,12 @@ class LevelManager:
         else:
             self.background = pygame.Surface((self.width, self.height))
             self.background.fill((50, 50, 100))  # fallback color
-        
+
         self.overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         self.overlay.fill((0, 0, 0, 120))
 
     def next_level(self):
+        """Advance to next level, return True if advanced, False if no more levels."""
         if self.index + 1 < len(self.levels):
             self.index += 1
             self.load_level(self.index)

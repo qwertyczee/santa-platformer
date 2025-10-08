@@ -19,6 +19,14 @@ STARTING_LIVES = 3
 # --- Asset Paths ---
 ASSETS_DIR = Path(__file__).parent / "assets"
 
+# --- Game States ---
+class GameState:
+    MAIN_MENU   = "MAIN_MENU"
+    LEVEL_SELECT= "LEVEL_SELECT"
+    OPTIONS     = "OPTIONS"
+    PLAYING     = "PLAYING"
+    PAUSED      = "PAUSED"
+
 # --- Power-up Durations (in milliseconds) ---
 POWERUP_DURATIONS = {
     'double_jump': 15000,

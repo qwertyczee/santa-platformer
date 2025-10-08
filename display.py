@@ -24,6 +24,15 @@ class DisplayManager:
         self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
         
         self.calculate_scaling()
+
+    def to_base_pos(self, sx, sy):
+        """Convert screen coords to base (800x600) coords for UI hit-testing."""
+        # ochrana proti dělení nulou (nemělo by nastat)
+        scale_x = self.scale_x if self.scale_x != 0 else 1.0
+        scale_y = self.scale_y if self.scale_y != 0 else 1.0
+        bx = (sx - self.offset_x) / scale_x
+        by = (sy - self.offset_y) / scale_y
+        return int(bx), int(by)
     
     def calculate_scaling(self):
         """Calculate scaling factors to maintain aspect ratio."""
