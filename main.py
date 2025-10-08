@@ -30,6 +30,7 @@ settings = Settings.load()
 
 # --- Game State & Screens ---
 state = GameState.MAIN_MENU
+previous_state = GameState.MAIN_MENU  # Track where we came from for Options back button
 main_menu = MainMenu(big_font, font)
 pause_menu = PauseMenu(big_font, font)
 level_select = LevelSelect(big_font, font, [lvl["name"] for lvl in LEVELS])
@@ -89,6 +90,7 @@ while running:
         elif action == "Level Selector":
             state = GameState.LEVEL_SELECT
         elif action == "Options":
+            previous_state = GameState.MAIN_MENU
             state = GameState.OPTIONS
         elif action == "Quit":
             running = False
@@ -114,8 +116,11 @@ while running:
         display.render_game_surface(game_surface)
         pygame.display.flip()
         if act == "Back":
-            # Rebuild LevelSelect (names unchanged; but keep separation)
-            level_select = LevelSelect(big_font, font, [lvl["name"] for lvl in LEVELS])
+            # Return to the previous menu
+            state = previous_state
+            # Rebuild LevelSelect if coming from there (names unchanged; but keep separation)
+            if previous_state == GameState.LEVEL_SELECT:
+                level_select = LevelSelect(big_font, font, [lvl["name"] for lvl in LEVELS])
             # If we change difficulty, re-apply powerup multipliers at runtime
             continue
         continue
@@ -134,6 +139,7 @@ while running:
             state = GameState.PLAYING
             pygame.mouse.set_visible(False)
         elif act == "Options":
+            previous_state = GameState.PAUSED
             state = GameState.OPTIONS
         elif act == "Quit to Menu":
             state = GameState.MAIN_MENU
