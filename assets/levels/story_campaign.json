@@ -1,0 +1,306 @@
+{
+  "campaign": {
+    "title": "Saving Christmas: The Frozen Tale",
+    "description": "A multi-stage adventure guiding Santa through a cursed valley to recover the Star of Light.",
+    "recommendedDifficulty": "Normal",
+    "levels": [
+      {
+        "id": "act1_snowbound_valley",
+        "name": "Act I – Snowbound Valley",
+        "width": 5600,
+        "height": 1200,
+        "background": {
+          "image": "bckg1.png",
+          "parallaxLayers": [
+            { "image": "bckg1.png", "scroll": [0.2, 0.0], "tint": [255, 255, 255, 230] },
+            { "image": "bckg1.png", "scroll": [0.5, 0.0], "tint": [200, 220, 255, 255] }
+          ],
+          "ambientColor": [18, 26, 60]
+        },
+        "player_start": [120, 920],
+        "goal": [5200, 900, 96, 160],
+        "ground": [0, 1160, 5600, 40],
+        "checkpoints": [
+          {
+            "id": "village_gate",
+            "rect": [600, 960, 200, 120],
+            "respawn": [620, 920],
+            "story": "checkpoint_villagers"
+          },
+          {
+            "id": "frozen_bridge",
+            "rect": [1980, 760, 160, 120],
+            "respawn": [2000, 720],
+            "story": "bridge_warning"
+          },
+          {
+            "id": "glacial_cavern",
+            "rect": [3100, 680, 200, 140],
+            "respawn": [3120, 640],
+            "story": "cavern_echo"
+          },
+          {
+            "id": "aurora_climb",
+            "rect": [4280, 520, 200, 160],
+            "respawn": [4300, 480],
+            "story": "aurora_encounter"
+          }
+        ],
+        "presents": [
+          [180, 880, 32, 32],
+          [260, 820, 32, 32],
+          [340, 760, 32, 32],
+          [460, 860, 32, 32],
+          [540, 820, 32, 32],
+          [720, 780, 32, 32],
+          [860, 820, 32, 32],
+          [940, 780, 32, 32],
+          [1080, 740, 32, 32],
+          [1220, 760, 32, 32],
+          [1380, 800, 32, 32],
+          [1480, 720, 32, 32],
+          [1580, 680, 32, 32],
+          [1700, 640, 32, 32],
+          [1820, 680, 32, 32],
+          [1940, 720, 32, 32],
+          [2080, 680, 32, 32],
+          [2220, 640, 32, 32],
+          [2320, 600, 32, 32],
+          [2440, 560, 32, 32],
+          [2580, 520, 32, 32],
+          [2680, 520, 32, 32],
+          [2780, 560, 32, 32],
+          [2880, 600, 32, 32],
+          [3000, 640, 32, 32],
+          [3100, 680, 32, 32],
+          [3220, 720, 32, 32],
+          [3340, 760, 32, 32],
+          [3460, 800, 32, 32],
+          [3580, 820, 32, 32],
+          [3700, 780, 32, 32],
+          [3820, 720, 32, 32],
+          [3940, 660, 32, 32],
+          [4060, 600, 32, 32],
+          [4180, 560, 32, 32],
+          [4300, 520, 32, 32],
+          [4420, 480, 32, 32],
+          [4540, 520, 32, 32],
+          [4660, 560, 32, 32],
+          [4780, 600, 32, 32],
+          [4900, 640, 32, 32],
+          [5020, 700, 32, 32],
+          [5140, 760, 32, 32]
+        ],
+        "platforms": [
+          [0, 1080, 480, 40],
+          [540, 1020, 280, 30],
+          [920, 960, 300, 30],
+          [1280, 900, 280, 30],
+          [1600, 860, 240, 30],
+          [1860, 820, 220, 30],
+          [2060, 780, 200, 30],
+          [2260, 740, 200, 30],
+          [2460, 700, 200, 30],
+          [2660, 660, 200, 30],
+          [2860, 620, 200, 30],
+          [3060, 580, 200, 30],
+          [3260, 540, 220, 30],
+          [3480, 520, 240, 30],
+          [3720, 500, 240, 30],
+          [3960, 480, 240, 30],
+          [4200, 460, 240, 30],
+          [4440, 440, 240, 30],
+          [4680, 460, 220, 30],
+          [4920, 500, 220, 30],
+          [5160, 540, 200, 30]
+        ],
+        "powerups": [
+          { "rect": [960, 920, 28, 28], "type": "double_jump" },
+          { "rect": [2040, 740, 28, 28], "type": "speed_boost" },
+          { "rect": [3020, 600, 28, 28], "type": "invincibility" },
+          { "rect": [4040, 540, 28, 28], "type": "double_jump" }
+        ],
+        "enemies": [
+          [780, 1020, 48, 48, 720, 880, 1.4],
+          [1180, 940, 48, 48, 1100, 1260, 1.2],
+          [1560, 880, 48, 48, 1500, 1660, 1.5],
+          [1860, 840, 48, 48, 1800, 1940, 1.6],
+          [2100, 800, 48, 48, 2040, 2200, 1.7],
+          [2300, 760, 48, 48, 2240, 2360, 1.8],
+          [2500, 720, 48, 48, 2440, 2560, 1.9],
+          [2700, 680, 48, 48, 2660, 2760, 2.0],
+          [2920, 640, 48, 48, 2880, 2980, 2.1],
+          [3140, 600, 48, 48, 3100, 3180, 2.1],
+          [3340, 560, 48, 48, 3300, 3400, 2.0],
+          [3560, 540, 48, 48, 3500, 3620, 1.9],
+          [3780, 520, 48, 48, 3720, 3840, 1.8],
+          [4000, 500, 48, 48, 3940, 4060, 1.8],
+          [4220, 480, 48, 48, 4160, 4300, 1.7],
+          [4440, 500, 48, 48, 4380, 4500, 1.6],
+          [4680, 540, 48, 48, 4620, 4740, 1.5],
+          [4900, 580, 48, 48, 4840, 4960, 1.4]
+        ],
+        "events": [
+          {
+            "id": "start_fireworks",
+            "trigger": "presents_collected:20",
+            "effect": "spawn_powerup",
+            "payload": { "type": "speed_boost", "rect": [3600, 520, 28, 28] }
+          },
+          {
+            "id": "cave_collapse",
+            "trigger": "checkpoint_reached:glacial_cavern",
+            "effect": "spawn_platforms",
+            "payload": {
+              "platforms": [
+                [3180, 520, 180, 28],
+                [3360, 500, 160, 28],
+                [3520, 480, 140, 28]
+              ]
+            }
+          }
+        ],
+        "story": {
+          "intro": [
+            {
+              "speaker": "Narrator",
+              "portrait": null,
+              "speed": 34,
+              "text": "On the eve of Christmas, a bitter chill sweeps across Snowbound Valley."
+            },
+            {
+              "speaker": "Narrator",
+              "portrait": null,
+              "speed": 34,
+              "text": "Santa arrives to find the village lights dimmed and the Star of Light missing from the Great Tree."
+            },
+            {
+              "speaker": "Elder Carol",
+              "portrait": "elder.png",
+              "speed": 40,
+              "text": "Santa! Frost sprites stole the Star and fled toward the glacial cliffs. Only you can brave the valley!"
+            },
+            {
+              "speaker": "Santa",
+              "portrait": "santa_talk.png",
+              "speed": 42,
+              "text": "Keep the hearths burning, Elder. I will return with the Star and warm every chimney!"
+            }
+          ],
+          "outro": [
+            {
+              "speaker": "Santa",
+              "portrait": "santa_smile.png",
+              "speed": 45,
+              "text": "The Star shines once more! But its glow flickers—the curse lingers deeper in the mountains."
+            },
+            {
+              "speaker": "Elder Carol",
+              "portrait": "elder.png",
+              "speed": 38,
+              "text": "Then you must climb beyond the auroras. The Frozen King awaits, but hope follows in your footsteps."
+            },
+            {
+              "speaker": "Narrator",
+              "portrait": null,
+              "speed": 34,
+              "text": "Santa grips the rekindled Star as a new path opens to the Frozen Spire. The journey continues..."
+            }
+          ],
+          "interludes": [
+            {
+              "id": "checkpoint_villagers",
+              "sequence": [
+                {
+                  "speaker": "Village Child",
+                  "portrait": "child.png",
+                  "speed": 44,
+                  "text": "Santa! Frost sprites froze our sleds. Can you collect the presents they scattered?"
+                },
+                {
+                  "speaker": "Santa",
+                  "portrait": "santa_talk.png",
+                  "speed": 40,
+                  "text": "I will gather every gift. Stay close to the fire and sing carols till I return!"
+                }
+              ]
+            },
+            {
+              "id": "bridge_warning",
+              "sequence": [
+                {
+                  "speaker": "Guardian Sprite",
+                  "portrait": "sprite.png",
+                  "speed": 36,
+                  "text": "Beyond the frozen bridge, the wind will snatch your hat. Time your jumps with the gusts!"
+                },
+                {
+                  "speaker": "Santa",
+                  "portrait": "santa_serious.png",
+                  "speed": 38,
+                  "text": "Then I shall lean into the wind like a guiding reindeer. Thank you, little guardian."
+                }
+              ]
+            },
+            {
+              "id": "cavern_echo",
+              "sequence": [
+                {
+                  "speaker": "Echoing Voice",
+                  "portrait": null,
+                  "speed": 30,
+                  "text": "Turn back, warm-blooded wanderer. The cavern ahead devours warmth and light."
+                },
+                {
+                  "speaker": "Santa",
+                  "portrait": "santa_serious.png",
+                  "speed": 36,
+                  "text": "I deliver joy through the darkest nights. Your chill will not deter me."
+                },
+                {
+                  "speaker": "Echoing Voice",
+                  "portrait": null,
+                  "speed": 34,
+                  "text": "Then take this warning—platforms fall once stepped upon. Move swiftly or be entombed in ice."
+                }
+              ]
+            },
+            {
+              "id": "aurora_encounter",
+              "sequence": [
+                {
+                  "speaker": "Aurora Spirit",
+                  "portrait": "aurora.png",
+                  "speed": 48,
+                  "text": "Santa of the Northern Lights, your courage paints the sky. Collect the luminous runes ahead to charge the Star."
+                },
+                {
+                  "speaker": "Santa",
+                  "portrait": "santa_smile.png",
+                  "speed": 44,
+                  "text": "Guide my sleigh, radiant spirit. I will gather every rune before the dawn."
+                }
+              ]
+            }
+          ]
+        },
+        "decorations": [
+          { "texture": "candy_cane.png", "position": [180, 1040], "scale": [48, 160] },
+          { "texture": "lantern.png", "position": [720, 980], "scale": [32, 64] },
+          { "texture": "lantern.png", "position": [1320, 920], "scale": [32, 64] },
+          { "texture": "icicle.png", "position": [2080, 620], "scale": [32, 96] },
+          { "texture": "icicle.png", "position": [2480, 580], "scale": [32, 96] },
+          { "texture": "aurora_banner.png", "position": [4200, 440], "scale": [96, 120] }
+        ],
+        "navigationHints": [
+          {
+            "text": "Press JUMP to clear the snowy ledges. Collect presents to unlock the Star."
+          },
+          {
+            "text": "Checkpoints warm Santa's boots and save your progress."
+          }
+        ]
+      }
+    ]
+  }
+}
